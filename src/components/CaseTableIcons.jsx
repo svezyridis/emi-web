@@ -15,9 +15,10 @@ import Search from '@material-ui/icons/Search'
 import ViewColumn from '@material-ui/icons/ViewColumn'
 import PersonAddIcon from '@material-ui/icons/PersonAdd'
 import AddLocationIcon from '@material-ui/icons/AddLocation'
+import PostAddIcon from '@material-ui/icons/PostAdd'
 
 const caseTableIcons = {
-  Add: forwardRef((props, ref) => <PersonAddIcon {...props} ref={ref} />),
+  Add: forwardRef((props, ref) => <PostAddIcon {...props} ref={ref} />),
   Check: forwardRef((props, ref) => <Check {...props} ref={ref} />),
   Clear: forwardRef((props, ref) => <Clear {...props} ref={ref} />),
   Delete: forwardRef((props, ref) => <DeleteOutline {...props} ref={ref} />),

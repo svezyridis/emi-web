@@ -129,6 +129,14 @@ const useStyles = makeStyles(theme => ({
     marginLeft: 'auto',
     marginRight: 'auto',
     marginTop: '10px'
+  },
+  footer: {
+    marginTop: 'auto',
+    backgroundColor:
+      theme.palette.type === 'dark' ? theme.palette.grey[800] : theme.palette.grey[200],
+      position: 'fixed',
+    bottom: 0,
+    width:'100%'
   }
 }))
 
@@ -266,10 +274,10 @@ function Home ({ deleteAccount, account }) {
           <Grid container spacing={3}>
             <div />
           </Grid>
-          <Box pt={4}>
-            <Copyright />
-          </Box>
         </Container>
+        <footer className={classes.footer}>
+            <Copyright />
+      </footer>
       </main>
     </div>
   )

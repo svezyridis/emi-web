@@ -26,7 +26,7 @@ import { connect } from 'react-redux'
 import { newAccount, deleteAccount } from '../store/actions'
 import isEmpty from 'lodash.isempty'
 import { useHistory } from 'react-router-dom'
-import { Button } from '@material-ui/core'
+import { Button, TextField } from '@material-ui/core'
 import { fetch } from 'whatwg-fetch'
 import { baseURL } from '../general/constants'
 import find from 'lodash.find'
@@ -47,26 +47,117 @@ function Copyright () {
   )
 }
 
-const casesURL = baseURL + 'cases'
-const usersURL = baseURL + 'users'
+const clientsURL = baseURL + 'clients'
 
-const columns = [
-  { title: 'Αριθμός φακέλου', field: 'folderNo' },
-  { title: 'Φύση υπόθεσης', field: 'nature' },
-  { title: 'Ανατέθηκε σε', field: 'userID', lookup: {} },
-  { title: 'Ημερομηνία ανάθεσης', field: 'assignmentDate', type: 'date' },
-  { title: 'Ημερομηνία ολοκλήρωσης', field: 'completionDate', type: 'date' },
-  { title: 'Πελάτης', field: 'clientID', lookup: {} }
-]
-
-function Cases ({ deleteAccount, account }) {
+function Clients ({ deleteAccount, account }) {
   const classes = useStyles()
   const [open, setOpen] = useState(true)
   const [error, setError] = useState('')
   const [reason, setReason] = useState('')
+  const [clients, setClients] = useState([])
+  const [nameError, setNameError] = useState(false)
+  const [phoneError, setPhoneError] = useState(false)
+  const [mailError, setMailError] = useState(false)
   const history = useHistory()
   const controller = new window.AbortController()
   const signal = controller.signal
+
+  const columns = [
+    {
+      title: 'Όνομα',
+      field: 'name',
+      editComponent: props => {
+        return (
+          <TextField
+            type='text'
+            placeholder={props.columnDef.title}
+            autoFocus
+            margin='dense'
+            value={props.value === undefined ? '' : props.value}
+            onChange={event => {
+              props.onChange(event.target.value)
+            }}
+            InputProps={{
+              style: {
+                fontSize: 13
+              }
+            }}
+            error={nameError}
+            helperText={nameError ? 'Παρακαλώ εισάγετε όνομα' : null}
+          />)
+      }
+    },
+    { title: 'Επώνυμο', field: 'lastName' },
+    {
+      title: 'Τηλέφωνo',
+      field: 'phoneNumber',
+      editComponent: props => {
+        return (
+          <TextField
+            type='text'
+            placeholder={props.columnDef.title}
+            margin='dense'
+            value={props.value === undefined ? '' : props.value}
+            onChange={event => {
+              if (!isNaN(event.target.value) && event.target.value.length <= 10) { props.onChange(event.target.value) }
+            }}
+            InputProps={{
+              style: {
+                fontSize: 13
+              }
+            }}
+            error={phoneError}
+            helperText={phoneError ? 'Λιγότερα από 10 ψηφία' : null}
+          />)
+      }
+    },
+    {
+      title: 'E-mail',
+      field: 'email',
+      editComponent: props => {
+        return (
+          <TextField
+            type='text'
+            placeholder={props.columnDef.title}
+            margin='dense'
+            value={props.value === undefined ? '' : props.value}
+            onChange={event => {
+              props.onChange(event.target.value)
+            }}
+            InputProps={{
+              style: {
+                fontSize: 13
+              }
+            }}
+            error={mailError}
+            helperText={mailError ? 'Μη έγκυρο email' : null}
+          />)
+      }
+    },
+    {
+      title: 'Υποθέσεις',
+      field: 'noOfCases',
+      editable: 'never',
+      grouping: false,
+      render: rowData => {
+        return rowData ? (
+          <Badge color='secondary' badgeContent={rowData.noOfCases} showZero>
+            <Button
+              variant='contained'
+              onClick={() =>
+                history.push({
+                  pathname: `cases/${rowData.id}`,
+                  state: { classroom: rowData }
+                })}
+            >
+              ΠΡΟΒΟΛΗ
+            </Button>
+          </Badge>
+        ) : null
+      }
+
+    }
+  ]
 
   const handleDrawerOpen = () => {
     setOpen(true)
@@ -75,9 +166,9 @@ function Cases ({ deleteAccount, account }) {
     setOpen(false)
   }
 
-  const getCases = () => {
-    setReason('Γίνεται λήψη υποθέσεων')
-    fetch(casesURL, {
+  const getClients = () => {
+    setReason('Γίνεται λήψη πελατών')
+    fetch(clientsURL, {
       method: 'GET',
       credentials: 'include',
       signal: signal
@@ -94,6 +185,7 @@ function Cases ({ deleteAccount, account }) {
           setReason('')
           setError(message)
         } else {
+          setClients(result)
           setReason('')
         }
       })
@@ -104,52 +196,56 @@ function Cases ({ deleteAccount, account }) {
         }
       })
   }
-
-  const getUsers = () => {
-    fetch(usersURL, {
-      method: 'GET',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json'
-      },
-      signal: signal
-    })
-      .then(response => {
-        if (response.ok) {
-          return response.json()
-        } else throw Error(`Request rejected with status ${response.status}`)
-      })
-      .then(data => {
-        const { status, result, message } = data
-        console.log(data)
-        if (status === 'error') {
-          setError(message)
-        } else {
-          const columnToEdit = find(columns, { field: 'userID' })
-          result.forEach(user => {
-            columnToEdit.lookup[parseInt(user.id)] = user.lastName + ' ' + user.firstName
-          })
-        }
-      })
-      .catch(error => {
-        if (!controller.signal.aborted) {
-          console.error(error)
-        }
-      })
+  const clearErrors = () => {
+    setNameError(false)
+    setPhoneError(false)
+    setMailError(false)
   }
 
-  const addCase = newCase =>
+  function validateEmail (mail) {
+    if (/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(mail)) {
+      return (true)
+    }
+    return (false)
+  }
+
+  const addClient = newClient =>
     new Promise((resolve, reject) => {
-      console.log(newCase)
-      fetch(casesURL, {
+      clearErrors()
+      let nameError = false
+      let phoneError = false
+      let mailError = false
+      if (!newClient.name) {
+        nameError = true
+        reject(new Error('name error'))
+      }
+      if (newClient.name.trim().length === 0) {
+        nameError = true
+        reject(new Error('name error'))
+      }
+      if (newClient.phoneNumber && newClient.phoneNumber.length !== 10) {
+        phoneError = true
+        reject(new Error('phone error'))
+      }
+      if (newClient.email && !validateEmail(newClient.email)) {
+        mailError = true
+        reject(new Error('mail error'))
+      }
+      if (nameError || phoneError || mailError) {
+        setNameError(nameError)
+        setPhoneError(phoneError)
+        setMailError(mailError)
+        return
+      }
+
+      fetch(clientsURL, {
         method: 'POST',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           Accept: 'application/json'
         },
-        body: JSON.stringify({ ...newCase, clientID: 2 }),
+        body: JSON.stringify(newClient),
         signal: signal
       })
         .then(response => {
@@ -158,12 +254,12 @@ function Cases ({ deleteAccount, account }) {
           } else throw Error(`Request rejected with status ${response.status}`)
         })
         .then(data => {
-          const { status, result, message } = data
-          console.log(data)
+          const { status, message } = data
           if (status === 'error') {
             setError(message)
             reject(new Error(message))
           } else {
+            getClients()
             resolve()
           }
         })
@@ -179,7 +275,7 @@ function Cases ({ deleteAccount, account }) {
     if (isEmpty(account)) {
       return
     }
-    getUsers()
+    getClients()
     return () => {
       controller.abort()
     }
@@ -205,7 +301,7 @@ function Cases ({ deleteAccount, account }) {
             <MenuIcon />
           </IconButton>
           <Typography component='h1' variant='h6' color='inherit' noWrap className={classes.title}>
-            Υποθέσεις
+            Πελάτες
           </Typography>
           <IconButton color='inherit'>
             <Badge badgeContent={4} color='secondary'>
@@ -260,11 +356,8 @@ function Cases ({ deleteAccount, account }) {
         <Container maxWidth='lg' className={classes.container}>
           <MaterialTable
             icons={caseTableIcons}
-            options={{
-              grouping: true
-            }}
             editable={{
-              onRowAdd: newData => addCase(newData),
+              onRowAdd: newData => addClient(newData),
               onRowUpdate: (newData, oldData) =>
                 new Promise((resolve, reject) => {
                   setTimeout(() => {
@@ -290,17 +383,17 @@ function Cases ({ deleteAccount, account }) {
                   }, 1000)
                 })
             }}
-            title='Υποθέσεις'
+            title='Πελάτες'
             columns={columns}
-            data={[]}
+            data={clients}
             localization={{
               body: {
-                addTooltip: 'Νέα υπόθεση',
-                deleteTooltip: 'Διαγραφή υπόθεσης',
-                editTooltip: 'Επεξεργασία υπόθεσης',
+                addTooltip: 'Νέος πελάτης',
+                deleteTooltip: 'Διαγραφή πελάτη',
+                editTooltip: 'Επεξεργασία πελάτη',
                 editRow: {
                   deleteText:
-                  'Διαγραφή υπόθεσης;',
+                  'Διαγραφή πελάτη;',
                   cancelTooltip: 'Ακύρωση',
                   saveTooltip: 'Επιβεβαίωση'
                 }
@@ -346,4 +439,4 @@ export default connect(
       dispatch(deleteAccount())
     }
   })
-)(Cases)
+)(Clients)
