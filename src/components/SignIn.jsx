@@ -59,7 +59,8 @@ function SignIn ({ addAccount }) {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const history = useHistory()
-  const login = () => {
+  const login = (e) => {
+    e.preventDefault()
     const queryParams = {
       username: username,
       password: password
@@ -127,7 +128,8 @@ function SignIn ({ addAccount }) {
               variant='contained'
               color='primary'
               className={classes.submit}
-              onClick={() => login()}
+              onClick={(e) => login(e)}
+              type='submit'
             >
             Sign In
             </Button>

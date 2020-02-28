@@ -5,6 +5,8 @@ import CssBaseline from '@material-ui/core/CssBaseline'
 import { useSelector } from 'react-redux'
 import './App.css'
 import Login from './components/SignIn'
+import Home from './components/Home'
+import Cases from './components/Cases'
 
 const themeObject = {
   palette: {
@@ -50,7 +52,9 @@ function App () {
       <MuiThemeProvider theme={themeConfig}>
         <CssBaseline />
         <Switch>
-          <Route exact path='/' component={Login} />
+          <Route exact path='/' component={Home} />
+          <Route exact path='/login' component={Login} />
+          <Route exact path='/cases' component={Cases} />
         </Switch>
       </MuiThemeProvider>
     </Router>

@@ -30,7 +30,9 @@ import { useHistory } from 'react-router-dom'
 import { Button } from '@material-ui/core'
 import { fetch } from 'whatwg-fetch'
 import { baseURL } from '../general/constants'
-import { objectToQueryString } from '../general/helperFunctions'
+import find from 'lodash.find'
+import MaterialTable from 'material-table'
+import caseTableIcons from './CaseTableIcons'
 
 function Copyright () {
   return (
@@ -133,8 +135,18 @@ const useStyles = makeStyles(theme => ({
 }))
 
 const casesURL = baseURL + 'cases'
+const usersURL = baseURL + 'users'
 
-function Home ({ deleteAccount, account }) {
+const columns = [
+  { title: 'Αριθμός φακέλου', field: 'folderNo' },
+  { title: 'Φύση υπόθεσης', field: 'nature' },
+  { title: 'Ανατέθηκε σε', field: 'userID', lookup: {} },
+  { title: 'Ημερομηνία ανάθεσης', field: 'assignmentDate', type: 'date' },
+  { title: 'Ημερομηνία ολοκλήρωσης', field: 'completionDate', type: 'date' },
+  { title: 'Πελάτης', field: 'clientID', lookup: {} }
+]
+
+function Cases ({ deleteAccount, account }) {
   const classes = useStyles()
   const [open, setOpen] = useState(true)
   const [error, setError] = useState('')
@@ -150,9 +162,9 @@ function Home ({ deleteAccount, account }) {
     setOpen(false)
   }
 
-  const getMyCases = () => {
+  const getCases = () => {
     setReason('Γίνεται λήψη υποθέσεων')
-    fetch(casesURL + objectToQueryString({ userID: account.metadata.id }), {
+    fetch(casesURL, {
       method: 'GET',
       credentials: 'include',
       signal: signal
@@ -180,11 +192,81 @@ function Home ({ deleteAccount, account }) {
       })
   }
 
+  const getUsers = () => {
+    fetch(usersURL, {
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json'
+      },
+      signal: signal
+    })
+      .then(response => {
+        if (response.ok) {
+          return response.json()
+        } else throw Error(`Request rejected with status ${response.status}`)
+      })
+      .then(data => {
+        const { status, result, message } = data
+        console.log(data)
+        if (status === 'error') {
+          setError(message)
+        } else {
+          const columnToEdit = find(columns, { field: 'userID' })
+          result.forEach(user => {
+            columnToEdit.lookup[parseInt(user.id)] = user.lastName + ' ' + user.firstName
+          })
+        }
+      })
+      .catch(error => {
+        if (!controller.signal.aborted) {
+          console.error(error)
+        }
+      })
+  }
+
+  const addCase = newCase =>
+    new Promise((resolve, reject) => {
+      console.log(newCase)
+      fetch(casesURL, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json'
+        },
+        body: JSON.stringify({ ...newCase, clientID: 2 }),
+        signal: signal
+      })
+        .then(response => {
+          if (response.ok) {
+            return response.json()
+          } else throw Error(`Request rejected with status ${response.status}`)
+        })
+        .then(data => {
+          const { status, result, message } = data
+          console.log(data)
+          if (status === 'error') {
+            setError(message)
+            reject(new Error(message))
+          } else {
+            resolve()
+          }
+        })
+        .catch(error => {
+          if (!controller.signal.aborted) {
+            console.error(error)
+            reject(new Error(error))
+          }
+        })
+    })
+
   useEffect(() => {
     if (isEmpty(account)) {
       return
     }
-    getMyCases()
+    getUsers()
     return () => {
       controller.abort()
     }
@@ -210,7 +292,7 @@ function Home ({ deleteAccount, account }) {
             <MenuIcon />
           </IconButton>
           <Typography component='h1' variant='h6' color='inherit' noWrap className={classes.title}>
-            Οι υποθέσεις μου
+            Υποθέσεις
           </Typography>
           <IconButton color='inherit'>
             <Badge badgeContent={4} color='secondary'>
@@ -264,7 +346,73 @@ function Home ({ deleteAccount, account }) {
         <div className={classes.appBarSpacer} />
         <Container maxWidth='lg' className={classes.container}>
           <Grid container spacing={3}>
-            <div />
+            <MaterialTable
+              icons={caseTableIcons}
+              options={{
+                grouping: true
+              }}
+              editable={{
+                onRowAdd: newData => addCase(newData),
+                onRowUpdate: (newData, oldData) =>
+                  new Promise((resolve, reject) => {
+                    setTimeout(() => {
+                      {
+                        const data = this.state.data
+                        const index = data.indexOf(oldData)
+                        data[index] = newData
+                        this.setState({ data }, () => resolve())
+                      }
+                      resolve()
+                    }, 1000)
+                  }),
+                onRowDelete: oldData =>
+                  new Promise((resolve, reject) => {
+                    setTimeout(() => {
+                      {
+                        const data = this.state.data
+                        const index = data.indexOf(oldData)
+                        data.splice(index, 1)
+                        this.setState({ data }, () => resolve())
+                      }
+                      resolve()
+                    }, 1000)
+                  })
+              }}
+              title='Υποθέσεις'
+              columns={columns}
+              data={[]}
+              localization={{
+                body: {
+                  addTooltip: 'Νέα υπόθεση',
+                  deleteTooltip: 'Διαγραφή υπόθεσης',
+                  editTooltip: 'Επεξεργασία υπόθεσης',
+                  editRow: {
+                    deleteText:
+                  'Διαγραφή υπόθεσης;',
+                    cancelTooltip: 'Ακύρωση',
+                    saveTooltip: 'Επιβεβαίωση'
+                  }
+                },
+                header: {
+                  actions: 'Ενέργειες'
+                },
+                grouping: {
+                  placeholder: 'Σύρετε στήλη για ομαδοποίηση'
+                },
+                pagination: {
+                  firstTooltip: 'Πρώτη σελίδα',
+                  lastTooltip: 'Τελευταία σελίδα',
+                  nextTooltip: 'Επόμενη σελίδα',
+                  previousTooltip: 'Προηγούμενη σελίδα',
+                  labelRowsSelect: 'γραμμές',
+                  labelDisplayedRows: '{from}-{to} από {count}'
+                },
+                toolbar: {
+                  searchTooltip: 'Αναζήτηση',
+                  searchPlaceholder: 'Αναζήτηση'
+                }
+              }}
+            />
           </Grid>
           <Box pt={4}>
             <Copyright />
@@ -287,4 +435,4 @@ export default connect(
       dispatch(deleteAccount())
     }
   })
-)(Home)
+)(Cases)
