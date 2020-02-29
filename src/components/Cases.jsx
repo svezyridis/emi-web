@@ -11,7 +11,8 @@ import Divider from '@material-ui/core/Divider'
 import IconButton from '@material-ui/core/IconButton'
 import Badge from '@material-ui/core/Badge'
 import Container from '@material-ui/core/Container'
-import Grid from '@material-ui/core/Grid'
+import Select from '@material-ui/core/Select'
+import MenuItem from '@material-ui/core/MenuItem'
 import Link from '@material-ui/core/Link'
 import MenuIcon from '@material-ui/icons/Menu'
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft'
@@ -26,13 +27,14 @@ import { connect } from 'react-redux'
 import { newAccount, deleteAccount } from '../store/actions'
 import isEmpty from 'lodash.isempty'
 import { useHistory } from 'react-router-dom'
-import { Button } from '@material-ui/core'
+import { Button, TextField } from '@material-ui/core'
 import { fetch } from 'whatwg-fetch'
 import { baseURL } from '../general/constants'
 import find from 'lodash.find'
 import MaterialTable from 'material-table'
 import caseTableIcons from './CaseTableIcons'
 import useStyles from '../styles'
+import Autocomplete from '@material-ui/lab/Autocomplete'
 
 function Copyright () {
   return (
@@ -49,6 +51,7 @@ function Copyright () {
 
 const casesURL = baseURL + 'cases'
 const usersURL = baseURL + 'users'
+const clientsURL = baseURL + 'clients'
 
 const columns = [
   { title: 'Αριθμός φακέλου', field: 'folderNo' },
@@ -56,8 +59,46 @@ const columns = [
   { title: 'Ανατέθηκε σε', field: 'userID', lookup: {} },
   { title: 'Ημερομηνία ανάθεσης', field: 'assignmentDate', type: 'date' },
   { title: 'Ημερομηνία ολοκλήρωσης', field: 'completionDate', type: 'date' },
-  { title: 'Πελάτης', field: 'clientID', lookup: {} }
+  {
+    title: 'Πελάτης',
+    field: 'clientID',
+    lookup: {},
+    editComponent: props =>
+      <ClientEditComponent props={props} />
+
+  }
 ]
+
+const ClientEditComponent = ({ props }) => {
+  const clients = Object.keys(props.columnDef.lookup).map(key => ({ id: key, name: props.columnDef.lookup[key] }))
+  console.log(clients)
+  return (
+    <Autocomplete
+      id='combo-box-demo'
+      options={clients}
+      getOptionLabel={option => option.name}
+      style={{ width: 250 }}
+      onChange={(event, value) => props.onChange(value.id)}
+      renderInput={params => {
+        return (
+          <TextField
+            inputProps={params.inputProps}
+            disabled={false}
+            fullWidth
+            label='Πελάτης'
+            variant='outlined'
+            margin='dense'
+            InputProps={{
+              ...params.InputProps,
+              style: {
+                fontSize: 13
+              }
+            }}
+          />)
+      }}
+    />
+  )
+}
 
 function Cases ({ deleteAccount, account }) {
   const classes = useStyles()
@@ -94,6 +135,40 @@ function Cases ({ deleteAccount, account }) {
           setReason('')
           setError(message)
         } else {
+          setReason('')
+        }
+      })
+      .catch(error => {
+        setReason('')
+        if (!controller.signal.aborted) {
+          console.error(error)
+        }
+      })
+  }
+
+  const getClients = () => {
+    setReason('Γίνεται λήψη πελατών')
+    fetch(clientsURL, {
+      method: 'GET',
+      credentials: 'include',
+      signal: signal
+    })
+      .then(response => {
+        if (response.ok) {
+          return response.json()
+        } else throw Error(`Request rejected with status ${response.status}`)
+      })
+      .then(data => {
+        const { status, result, message } = data
+        console.log(data)
+        if (status === 'error') {
+          setReason('')
+          setError(message)
+        } else {
+          const columnToEdit = find(columns, { field: 'clientID' })
+          result.forEach(client => {
+            columnToEdit.lookup[parseInt(client.id)] = client.lastName !== undefined ? client.lastName + ' ' + client.name : client.name
+          })
           setReason('')
         }
       })
@@ -149,7 +224,7 @@ function Cases ({ deleteAccount, account }) {
           'Content-Type': 'application/json',
           Accept: 'application/json'
         },
-        body: JSON.stringify({ ...newCase, clientID: 2 }),
+        body: JSON.stringify(newCase),
         signal: signal
       })
         .then(response => {
@@ -180,6 +255,7 @@ function Cases ({ deleteAccount, account }) {
       return
     }
     getUsers()
+    getClients()
     return () => {
       controller.abort()
     }
