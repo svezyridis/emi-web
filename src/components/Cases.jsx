@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react'
 import clsx from 'clsx'
 import CssBaseline from '@material-ui/core/CssBaseline'
 import Drawer from '@material-ui/core/Drawer'
-import Box from '@material-ui/core/Box'
 import AppBar from '@material-ui/core/AppBar'
 import Toolbar from '@material-ui/core/Toolbar'
 import List from '@material-ui/core/List'
@@ -11,8 +10,6 @@ import Divider from '@material-ui/core/Divider'
 import IconButton from '@material-ui/core/IconButton'
 import Badge from '@material-ui/core/Badge'
 import Container from '@material-ui/core/Container'
-import Select from '@material-ui/core/Select'
-import MenuItem from '@material-ui/core/MenuItem'
 import Link from '@material-ui/core/Link'
 import MenuIcon from '@material-ui/icons/Menu'
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft'
@@ -49,16 +46,16 @@ function Copyright () {
   )
 }
 
-const casesURL = baseURL + 'cases'
-const usersURL = baseURL + 'users'
-const clientsURL = baseURL + 'clients'
+const casesURL = baseURL + 'cases/'
+const usersURL = baseURL + 'users/'
+const clientsURL = baseURL + 'clients/'
 
 const columns = [
   { title: 'Αριθμός φακέλου', field: 'folderNo' },
   { title: 'Φύση υπόθεσης', field: 'nature' },
   { title: 'Ανατέθηκε σε', field: 'userID', lookup: {} },
   { title: 'Ημερομηνία ανάθεσης', field: 'assignmentDate', type: 'date' },
-  { title: 'Ημερομηνία ολοκλήρωσης', field: 'completionDate', type: 'date' },
+  { title: 'Ημερομηνία περάτωσης', field: 'completionDate', type: 'date' },
   {
     title: 'Πελάτης',
     field: 'clientID',
@@ -71,7 +68,6 @@ const columns = [
 
 const ClientEditComponent = ({ props }) => {
   const clients = Object.keys(props.columnDef.lookup).map(key => ({ id: key, name: props.columnDef.lookup[key] }))
-  console.log(clients)
   return (
     <Autocomplete
       id='combo-box-demo'
@@ -105,6 +101,7 @@ function Cases ({ deleteAccount, account }) {
   const [open, setOpen] = useState(true)
   const [error, setError] = useState('')
   const [reason, setReason] = useState('')
+  const [cases, setCases] = useState([])
   const history = useHistory()
   const controller = new window.AbortController()
   const signal = controller.signal
@@ -135,6 +132,7 @@ function Cases ({ deleteAccount, account }) {
           setReason('')
           setError(message)
         } else {
+          setCases(result)
           setReason('')
         }
       })
@@ -146,73 +144,79 @@ function Cases ({ deleteAccount, account }) {
       })
   }
 
-  const getClients = () => {
-    setReason('Γίνεται λήψη πελατών')
-    fetch(clientsURL, {
-      method: 'GET',
-      credentials: 'include',
-      signal: signal
+  const getClients = () =>
+    new Promise((resolve, reject) => {
+      setReason('Γίνεται λήψη πελατών')
+      fetch(clientsURL, {
+        method: 'GET',
+        credentials: 'include',
+        signal: signal
+      })
+        .then(response => {
+          if (response.ok) {
+            return response.json()
+          } else throw Error(`Request rejected with status ${response.status}`)
+        })
+        .then(data => {
+          const { status, result, message } = data
+          console.log(data)
+          if (status === 'error') {
+            setReason('')
+            setError(message)
+          } else {
+            const columnToEdit = find(columns, { field: 'clientID' })
+            result.forEach(client => {
+              columnToEdit.lookup[parseInt(client.id)] = client.lastName !== undefined ? client.lastName + ' ' + client.name : client.name
+            })
+            setReason('')
+            resolve()
+          }
+        })
+        .catch(error => {
+          setReason('')
+          if (!controller.signal.aborted) {
+            console.error(error)
+          }
+          resolve()
+        })
     })
-      .then(response => {
-        if (response.ok) {
-          return response.json()
-        } else throw Error(`Request rejected with status ${response.status}`)
-      })
-      .then(data => {
-        const { status, result, message } = data
-        console.log(data)
-        if (status === 'error') {
-          setReason('')
-          setError(message)
-        } else {
-          const columnToEdit = find(columns, { field: 'clientID' })
-          result.forEach(client => {
-            columnToEdit.lookup[parseInt(client.id)] = client.lastName !== undefined ? client.lastName + ' ' + client.name : client.name
-          })
-          setReason('')
-        }
-      })
-      .catch(error => {
-        setReason('')
-        if (!controller.signal.aborted) {
-          console.error(error)
-        }
-      })
-  }
 
-  const getUsers = () => {
-    fetch(usersURL, {
-      method: 'GET',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json'
-      },
-      signal: signal
+  const getUsers = () =>
+    new Promise((resolve, reject) => {
+      fetch(usersURL, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json'
+        },
+        signal: signal
+      })
+        .then(response => {
+          if (response.ok) {
+            return response.json()
+          } else throw Error(`Request rejected with status ${response.status}`)
+        })
+        .then(data => {
+          console.log(data)
+          const { status, result, message } = data
+          if (status === 'error') {
+            setError(message)
+          } else {
+            const columnToEdit = find(columns, { field: 'userID' })
+            result.forEach(user => {
+              columnToEdit.lookup[parseInt(user.id)] = user.lastName + ' ' + user.firstName
+            })
+          }
+          resolve()
+        })
+        .catch(error => {
+          if (!controller.signal.aborted) {
+            console.error(error)
+          }
+          resolve()
+        })
     })
-      .then(response => {
-        if (response.ok) {
-          return response.json()
-        } else throw Error(`Request rejected with status ${response.status}`)
-      })
-      .then(data => {
-        const { status, result, message } = data
-        console.log(data)
-        if (status === 'error') {
-          setError(message)
-        } else {
-          const columnToEdit = find(columns, { field: 'userID' })
-          result.forEach(user => {
-            columnToEdit.lookup[parseInt(user.id)] = user.lastName + ' ' + user.firstName
-          })
-        }
-      })
-      .catch(error => {
-        if (!controller.signal.aborted) {
-          console.error(error)
-        }
-      })
-  }
 
   const addCase = newCase =>
     new Promise((resolve, reject) => {
@@ -233,12 +237,87 @@ function Cases ({ deleteAccount, account }) {
           } else throw Error(`Request rejected with status ${response.status}`)
         })
         .then(data => {
-          const { status, result, message } = data
+          const { status, message } = data
           console.log(data)
           if (status === 'error') {
             setError(message)
             reject(new Error(message))
           } else {
+            getCases()
+            resolve()
+          }
+        })
+        .catch(error => {
+          if (!controller.signal.aborted) {
+            console.error(error)
+            reject(new Error(error))
+          }
+        })
+    })
+
+  const updateCase = (newData, oldData) =>
+    new Promise((resolve, reject) => {
+      console.log(newData)
+      if (newData.userID === 0) { delete newData.userID }
+      fetch(casesURL + newData.id, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json'
+        },
+        body: JSON.stringify(newData),
+        signal: signal
+      })
+        .then(response => {
+          if (response.ok) {
+            return response.json()
+          } else throw Error(`Request rejected with status ${response.status}`)
+        })
+        .then(data => {
+          const { status, message } = data
+          console.log(data)
+          if (status === 'error') {
+            setError(message)
+            reject(new Error(message))
+          } else {
+            getCases()
+            resolve()
+          }
+        })
+        .catch(error => {
+          if (!controller.signal.aborted) {
+            console.error(error)
+            reject(new Error(error))
+          }
+        })
+    })
+
+  const deleteCase = (caseToDelete) =>
+    new Promise((resolve, reject) => {
+      console.log(caseToDelete)
+      fetch(casesURL + caseToDelete.id, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json'
+        },
+        signal: signal
+      })
+        .then(response => {
+          if (response.ok) {
+            return response.json()
+          } else throw Error(`Request rejected with status ${response.status}`)
+        })
+        .then(data => {
+          const { status, message } = data
+          console.log(data)
+          if (status === 'error') {
+            setError(message)
+            reject(new Error(message))
+          } else {
+            getCases()
             resolve()
           }
         })
@@ -254,8 +333,8 @@ function Cases ({ deleteAccount, account }) {
     if (isEmpty(account)) {
       return
     }
-    getUsers()
-    getClients()
+    getUsers().then(() => getClients().then(() => getCases()))
+
     return () => {
       controller.abort()
     }
@@ -339,36 +418,17 @@ function Cases ({ deleteAccount, account }) {
             options={{
               grouping: true
             }}
+            onRowClick={(event, rowData) => {
+              console.log(rowData)
+            }}
             editable={{
               onRowAdd: newData => addCase(newData),
-              onRowUpdate: (newData, oldData) =>
-                new Promise((resolve, reject) => {
-                  setTimeout(() => {
-                    {
-                      const data = this.state.data
-                      const index = data.indexOf(oldData)
-                      data[index] = newData
-                      this.setState({ data }, () => resolve())
-                    }
-                    resolve()
-                  }, 1000)
-                }),
-              onRowDelete: oldData =>
-                new Promise((resolve, reject) => {
-                  setTimeout(() => {
-                    {
-                      const data = this.state.data
-                      const index = data.indexOf(oldData)
-                      data.splice(index, 1)
-                      this.setState({ data }, () => resolve())
-                    }
-                    resolve()
-                  }, 1000)
-                })
+              onRowUpdate: (newData, oldData) => updateCase(newData, oldData),
+              onRowDelete: oldData => deleteCase(oldData)
             }}
             title='Υποθέσεις'
             columns={columns}
-            data={[]}
+            data={cases}
             localization={{
               body: {
                 addTooltip: 'Νέα υπόθεση',

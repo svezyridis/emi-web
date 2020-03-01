@@ -23,6 +23,15 @@ const themeObject = {
   },
   typography: {
     useNextVariants: true
+  },
+  overrides: {
+    MuiTableRow: {
+      hover: {
+        '&:hover': {
+          backgroundColor: 'lightgrey'
+        }
+      }
+    }
   }
 }
 
