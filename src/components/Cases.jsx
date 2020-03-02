@@ -32,6 +32,7 @@ import MaterialTable from 'material-table'
 import caseTableIcons from './CaseTableIcons'
 import useStyles from '../styles'
 import Autocomplete from '@material-ui/lab/Autocomplete'
+import LibraryBooksIcon from '@material-ui/icons/LibraryBooks'
 
 function Copyright () {
   return (
@@ -67,11 +68,15 @@ const columns = [
 ]
 
 const ClientEditComponent = ({ props }) => {
+  console.log(props)
   const clients = Object.keys(props.columnDef.lookup).map(key => ({ id: key, name: props.columnDef.lookup[key] }))
+  console.log(clients)
+  const defaultValue = props.value ? { defaultValue: find(clients, { id: props.value.toString() }) } : {}
   return (
     <Autocomplete
       id='combo-box-demo'
       options={clients}
+      {...defaultValue}
       getOptionLabel={option => option.name}
       style={{ width: 250 }}
       onChange={(event, value) => props.onChange(value.id)}
@@ -345,6 +350,15 @@ function Cases ({ deleteAccount, account }) {
     return null
   }
 
+  const isManager = account.metadata.role === 'MANAGER'
+  const editable = isManager ? {
+    editable: {
+      onRowAdd: newData => addCase(newData),
+      onRowUpdate: (newData, oldData) => updateCase(newData, oldData),
+      onRowDelete: oldData => deleteCase(oldData)
+    }
+  } : null
+
   return (
     <div className={classes.root}>
       <CssBaseline />
@@ -395,7 +409,7 @@ function Cases ({ deleteAccount, account }) {
             </ListItem>
             <ListItem button onClick={() => history.push('/cases')}>
               <ListItemIcon>
-                <ShoppingCartIcon />
+                <LibraryBooksIcon />
               </ListItemIcon>
               <ListItemText primary='Αρχείο' />
             </ListItem>
@@ -419,13 +433,12 @@ function Cases ({ deleteAccount, account }) {
               grouping: true
             }}
             onRowClick={(event, rowData) => {
-              console.log(rowData)
+              history.push({
+                pathname: `case/${rowData.folderNo}`,
+                state: { case: rowData }
+              })
             }}
-            editable={{
-              onRowAdd: newData => addCase(newData),
-              onRowUpdate: (newData, oldData) => updateCase(newData, oldData),
-              onRowDelete: oldData => deleteCase(oldData)
-            }}
+            {...editable}
             title='Υποθέσεις'
             columns={columns}
             data={cases}

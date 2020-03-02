@@ -31,8 +31,9 @@ import { fetch } from 'whatwg-fetch'
 import { baseURL } from '../general/constants'
 import find from 'lodash.find'
 import MaterialTable from 'material-table'
-import caseTableIcons from './CaseTableIcons'
+import LibraryBooksIcon from '@material-ui/icons/LibraryBooks'
 import useStyles from '../styles'
+import clientIcons from './ClientIcons'
 
 function Copyright () {
   return (
@@ -47,7 +48,7 @@ function Copyright () {
   )
 }
 
-const clientsURL = baseURL + 'clients'
+const clientsURL = baseURL + 'clients/'
 
 function Clients ({ deleteAccount, account }) {
   const classes = useStyles()
@@ -270,6 +271,100 @@ function Clients ({ deleteAccount, account }) {
           }
         })
     })
+  const deleteClient = (client) =>
+    new Promise((resolve, reject) => {
+      fetch(clientsURL + client.id, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json'
+        },
+        signal: signal
+      })
+        .then(response => {
+          if (response.ok) {
+            return response.json()
+          } else throw Error(`Request rejected with status ${response.status}`)
+        })
+        .then(data => {
+          const { status, message } = data
+          if (status === 'error') {
+            setError(message)
+            reject(new Error(message))
+          } else {
+            getClients()
+            resolve()
+          }
+        })
+        .catch(error => {
+          if (!controller.signal.aborted) {
+            console.error(error)
+            reject(new Error(error))
+          }
+        })
+    })
+
+  const updateClient = (client) =>
+    new Promise((resolve, reject) => {
+      clearErrors()
+      let nameError = false
+      let phoneError = false
+      let mailError = false
+      if (!client.name) {
+        nameError = true
+        reject(new Error('name error'))
+      }
+      if (client.name.trim().length === 0) {
+        nameError = true
+        reject(new Error('name error'))
+      }
+      if (client.phoneNumber && client.phoneNumber.length !== 10) {
+        phoneError = true
+        reject(new Error('phone error'))
+      }
+      if (client.email && !validateEmail(client.email)) {
+        mailError = true
+        reject(new Error('mail error'))
+      }
+      if (nameError || phoneError || mailError) {
+        setNameError(nameError)
+        setPhoneError(phoneError)
+        setMailError(mailError)
+        return
+      }
+      fetch(clientsURL + client.id, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json'
+        },
+        body: JSON.stringify(client),
+        signal: signal
+      })
+        .then(response => {
+          if (response.ok) {
+            return response.json()
+          } else throw Error(`Request rejected with status ${response.status}`)
+        })
+        .then(data => {
+          const { status, message } = data
+          if (status === 'error') {
+            setError(message)
+            reject(new Error(message))
+          } else {
+            getClients()
+            resolve()
+          }
+        })
+        .catch(error => {
+          if (!controller.signal.aborted) {
+            console.error(error)
+            reject(new Error(error))
+          }
+        })
+    })
 
   useEffect(() => {
     if (isEmpty(account)) {
@@ -285,6 +380,14 @@ function Clients ({ deleteAccount, account }) {
     history.push('/login')
     return null
   }
+  const isManager = account.metadata.role === 'MANAGER'
+  const editable = isManager ? {
+    editable: {
+      onRowAdd: newData => addClient(newData),
+      onRowUpdate: (newData, oldData) => updateClient(newData),
+      onRowDelete: oldData => deleteClient(oldData)
+    }
+  } : null
 
   return (
     <div className={classes.root}>
@@ -336,7 +439,7 @@ function Clients ({ deleteAccount, account }) {
             </ListItem>
             <ListItem button onClick={() => history.push('/cases')}>
               <ListItemIcon>
-                <ShoppingCartIcon />
+                <LibraryBooksIcon />
               </ListItemIcon>
               <ListItemText primary='Αρχείο' />
             </ListItem>
@@ -355,34 +458,8 @@ function Clients ({ deleteAccount, account }) {
         <div className={classes.appBarSpacer} />
         <Container maxWidth='lg' className={classes.container}>
           <MaterialTable
-            icons={caseTableIcons}
-            editable={{
-              onRowAdd: newData => addClient(newData),
-              onRowUpdate: (newData, oldData) =>
-                new Promise((resolve, reject) => {
-                  setTimeout(() => {
-                    {
-                      const data = this.state.data
-                      const index = data.indexOf(oldData)
-                      data[index] = newData
-                      this.setState({ data }, () => resolve())
-                    }
-                    resolve()
-                  }, 1000)
-                }),
-              onRowDelete: oldData =>
-                new Promise((resolve, reject) => {
-                  setTimeout(() => {
-                    {
-                      const data = this.state.data
-                      const index = data.indexOf(oldData)
-                      data.splice(index, 1)
-                      this.setState({ data }, () => resolve())
-                    }
-                    resolve()
-                  }, 1000)
-                })
-            }}
+            icons={clientIcons}
+            {...editable}
             title='Πελάτες'
             columns={columns}
             data={clients}

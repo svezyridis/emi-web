@@ -27,5 +27,5 @@ export const actiontypes = {
   FINISH_TEST: 'FINISH_TEST',
   DELETE_TESTS: 'DELETE_TESTS'
 }
-// export const baseURL = 'https://projectapi.ml/'
-export const baseURL = 'http://localhost:8080/'
+export const baseURL = 'api/'
+// export const baseURL = 'http://localhost:8080/'
