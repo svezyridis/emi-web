@@ -24,13 +24,13 @@ import { connect } from 'react-redux'
 import { newAccount, deleteAccount } from '../store/actions'
 import isEmpty from 'lodash.isempty'
 import { useHistory } from 'react-router-dom'
-import { Button, TextField } from '@material-ui/core'
+import { Button, Grid, Card, CardActions, CardContent } from '@material-ui/core'
 import { fetch } from 'whatwg-fetch'
 import { baseURL } from '../general/constants'
-import MaterialTable from 'material-table'
-import LibraryBooksIcon from '@material-ui/icons/LibraryBooks'
+import find from 'lodash.find'
 import useStyles from '../styles'
-import clientIcons from './ClientIcons'
+import LibraryBooksIcon from '@material-ui/icons/LibraryBooks'
+import { objectToQueryString } from '../general/helperFunctions'
 
 function Copyright () {
   return (
@@ -45,117 +45,21 @@ function Copyright () {
   )
 }
 
+const casesURL = baseURL + 'cases/'
+const usersURL = baseURL + 'users/'
 const clientsURL = baseURL + 'clients/'
 
-function Clients ({ deleteAccount, account }) {
+function ClientCases ({ deleteAccount, account, match, location }) {
   const classes = useStyles()
   const [open, setOpen] = useState(true)
   const [error, setError] = useState('')
   const [reason, setReason] = useState('')
-  const [clients, setClients] = useState([])
-  const [nameError, setNameError] = useState(false)
-  const [phoneError, setPhoneError] = useState(false)
-  const [mailError, setMailError] = useState(false)
+  const [cases, setCases] = useState([])
+  const [users, setUsers] = useState([])
   const history = useHistory()
   const controller = new window.AbortController()
   const signal = controller.signal
-
-  const columns = [
-    {
-      title: 'Όνομα',
-      field: 'name',
-      editComponent: props => {
-        return (
-          <TextField
-            type='text'
-            placeholder={props.columnDef.title}
-            autoFocus
-            margin='dense'
-            value={props.value === undefined ? '' : props.value}
-            onChange={event => {
-              props.onChange(event.target.value)
-            }}
-            InputProps={{
-              style: {
-                fontSize: 13
-              }
-            }}
-            error={nameError}
-            helperText={nameError ? 'Παρακαλώ εισάγετε όνομα' : null}
-          />)
-      }
-    },
-    { title: 'Επώνυμο', field: 'lastName' },
-    {
-      title: 'Τηλέφωνo',
-      field: 'phoneNumber',
-      editComponent: props => {
-        return (
-          <TextField
-            type='text'
-            placeholder={props.columnDef.title}
-            margin='dense'
-            value={props.value === undefined ? '' : props.value}
-            onChange={event => {
-              if (!isNaN(event.target.value) && event.target.value.length <= 10) { props.onChange(event.target.value) }
-            }}
-            InputProps={{
-              style: {
-                fontSize: 13
-              }
-            }}
-            error={phoneError}
-            helperText={phoneError ? 'Λιγότερα από 10 ψηφία' : null}
-          />)
-      }
-    },
-    {
-      title: 'E-mail',
-      field: 'email',
-      editComponent: props => {
-        return (
-          <TextField
-            type='text'
-            placeholder={props.columnDef.title}
-            margin='dense'
-            value={props.value === undefined ? '' : props.value}
-            onChange={event => {
-              props.onChange(event.target.value)
-            }}
-            InputProps={{
-              style: {
-                fontSize: 13
-              }
-            }}
-            error={mailError}
-            helperText={mailError ? 'Μη έγκυρο email' : null}
-          />)
-      }
-    },
-    {
-      title: 'Υποθέσεις',
-      field: 'noOfCases',
-      editable: 'never',
-      grouping: false,
-      render: rowData => {
-        return rowData ? (
-          <Badge color='secondary' badgeContent={rowData.noOfCases} showZero>
-            <Button
-              variant='contained'
-              onClick={() =>
-                history.push({
-                  pathname: `client/${rowData.id}`,
-                  state: { client: rowData }
-                })}
-            >
-              ΠΡΟΒΟΛΗ
-            </Button>
-          </Badge>
-        ) : null
-      }
-
-    }
-  ]
+  const clientID = match.params.id
 
   const handleDrawerOpen = () => {
     setOpen(true)
@@ -164,9 +68,9 @@ function Clients ({ deleteAccount, account }) {
     setOpen(false)
   }
 
-  const getClients = () => {
-    setReason('Γίνεται λήψη πελατών')
-    fetch(clientsURL, {
+  const getCases = () => {
+    setReason('Γίνεται λήψη υποθέσεων')
+    fetch(casesURL + objectToQueryString({ clientID: clientID }), {
       method: 'GET',
       credentials: 'include',
       signal: signal
@@ -183,7 +87,7 @@ function Clients ({ deleteAccount, account }) {
           setReason('')
           setError(message)
         } else {
-          setClients(result)
+          setCases(result)
           setReason('')
         }
       })
@@ -194,56 +98,52 @@ function Clients ({ deleteAccount, account }) {
         }
       })
   }
-  const clearErrors = () => {
-    setNameError(false)
-    setPhoneError(false)
-    setMailError(false)
-  }
 
-  function validateEmail (mail) {
-    if (/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(mail)) {
-      return (true)
-    }
-    return (false)
-  }
-
-  const addClient = newClient =>
+  const getUsers = () =>
     new Promise((resolve, reject) => {
-      clearErrors()
-      let nameError = false
-      let phoneError = false
-      let mailError = false
-      if (!newClient.name) {
-        nameError = true
-        reject(new Error('name error'))
-      }
-      if (newClient.name.trim().length === 0) {
-        nameError = true
-        reject(new Error('name error'))
-      }
-      if (newClient.phoneNumber && newClient.phoneNumber.length !== 10) {
-        phoneError = true
-        reject(new Error('phone error'))
-      }
-      if (newClient.email && !validateEmail(newClient.email)) {
-        mailError = true
-        reject(new Error('mail error'))
-      }
-      if (nameError || phoneError || mailError) {
-        setNameError(nameError)
-        setPhoneError(phoneError)
-        setMailError(mailError)
-        return
-      }
+      fetch(usersURL, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json'
+        },
+        signal: signal
+      })
+        .then(response => {
+          if (response.ok) {
+            return response.json()
+          } else throw Error(`Request rejected with status ${response.status}`)
+        })
+        .then(data => {
+          console.log(data)
+          const { status, result, message } = data
+          if (status === 'error') {
+            setError(message)
+          } else {
+            setUsers(result)
+          }
+          resolve()
+        })
+        .catch(error => {
+          if (!controller.signal.aborted) {
+            console.error(error)
+          }
+          resolve()
+        })
+    })
 
-      fetch(clientsURL, {
+  const addCase = newCase =>
+    new Promise((resolve, reject) => {
+      console.log(newCase)
+      fetch(casesURL, {
         method: 'POST',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           Accept: 'application/json'
         },
-        body: JSON.stringify(newClient),
+        body: JSON.stringify(newCase),
         signal: signal
       })
         .then(response => {
@@ -253,11 +153,12 @@ function Clients ({ deleteAccount, account }) {
         })
         .then(data => {
           const { status, message } = data
+          console.log(data)
           if (status === 'error') {
             setError(message)
             reject(new Error(message))
           } else {
-            getClients()
+            getCases()
             resolve()
           }
         })
@@ -268,9 +169,49 @@ function Clients ({ deleteAccount, account }) {
           }
         })
     })
-  const deleteClient = (client) =>
+
+  const updateCase = (newData, oldData) =>
     new Promise((resolve, reject) => {
-      fetch(clientsURL + client.id, {
+      console.log(newData)
+      if (newData.userID === 0) { delete newData.userID }
+      fetch(casesURL + newData.id, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json'
+        },
+        body: JSON.stringify(newData),
+        signal: signal
+      })
+        .then(response => {
+          if (response.ok) {
+            return response.json()
+          } else throw Error(`Request rejected with status ${response.status}`)
+        })
+        .then(data => {
+          const { status, message } = data
+          console.log(data)
+          if (status === 'error') {
+            setError(message)
+            reject(new Error(message))
+          } else {
+            getCases()
+            resolve()
+          }
+        })
+        .catch(error => {
+          if (!controller.signal.aborted) {
+            console.error(error)
+            reject(new Error(error))
+          }
+        })
+    })
+
+  const deleteCase = (caseToDelete) =>
+    new Promise((resolve, reject) => {
+      console.log(caseToDelete)
+      fetch(casesURL + caseToDelete.id, {
         method: 'DELETE',
         credentials: 'include',
         headers: {
@@ -286,72 +227,12 @@ function Clients ({ deleteAccount, account }) {
         })
         .then(data => {
           const { status, message } = data
+          console.log(data)
           if (status === 'error') {
             setError(message)
             reject(new Error(message))
           } else {
-            getClients()
-            resolve()
-          }
-        })
-        .catch(error => {
-          if (!controller.signal.aborted) {
-            console.error(error)
-            reject(new Error(error))
-          }
-        })
-    })
-
-  const updateClient = (client) =>
-    new Promise((resolve, reject) => {
-      clearErrors()
-      let nameError = false
-      let phoneError = false
-      let mailError = false
-      if (!client.name) {
-        nameError = true
-        reject(new Error('name error'))
-      }
-      if (client.name.trim().length === 0) {
-        nameError = true
-        reject(new Error('name error'))
-      }
-      if (client.phoneNumber && client.phoneNumber.length !== 10) {
-        phoneError = true
-        reject(new Error('phone error'))
-      }
-      if (client.email && !validateEmail(client.email)) {
-        mailError = true
-        reject(new Error('mail error'))
-      }
-      if (nameError || phoneError || mailError) {
-        setNameError(nameError)
-        setPhoneError(phoneError)
-        setMailError(mailError)
-        return
-      }
-      fetch(clientsURL + client.id, {
-        method: 'PUT',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json'
-        },
-        body: JSON.stringify(client),
-        signal: signal
-      })
-        .then(response => {
-          if (response.ok) {
-            return response.json()
-          } else throw Error(`Request rejected with status ${response.status}`)
-        })
-        .then(data => {
-          const { status, message } = data
-          if (status === 'error') {
-            setError(message)
-            reject(new Error(message))
-          } else {
-            getClients()
+            getCases()
             resolve()
           }
         })
@@ -367,7 +248,9 @@ function Clients ({ deleteAccount, account }) {
     if (isEmpty(account)) {
       return
     }
-    getClients()
+    getUsers()
+    getCases()
+
     return () => {
       controller.abort()
     }
@@ -377,14 +260,14 @@ function Clients ({ deleteAccount, account }) {
     history.push('/login')
     return null
   }
+
+  if (!location.state) {
+    history.push('/clients')
+    return null
+  }
+  const client = location.state.client
+
   const isManager = account.metadata.role === 'MANAGER'
-  const editable = isManager ? {
-    editable: {
-      onRowAdd: newData => addClient(newData),
-      onRowUpdate: (newData, oldData) => updateClient(newData),
-      onRowDelete: oldData => deleteClient(oldData)
-    }
-  } : null
 
   return (
     <div className={classes.root}>
@@ -401,7 +284,7 @@ function Clients ({ deleteAccount, account }) {
             <MenuIcon />
           </IconButton>
           <Typography component='h1' variant='h6' color='inherit' noWrap className={classes.title}>
-            Πελάτες
+            {client.name + client.lastName ? client.lastName : ''}
           </Typography>
         </Toolbar>
       </AppBar>
@@ -455,44 +338,61 @@ function Clients ({ deleteAccount, account }) {
       <main className={classes.content}>
         <div className={classes.appBarSpacer} />
         <Container maxWidth='lg' className={classes.container}>
-          <MaterialTable
-            icons={clientIcons}
-            {...editable}
-            title='Πελάτες'
-            columns={columns}
-            data={clients}
-            localization={{
-              body: {
-                addTooltip: 'Νέος πελάτης',
-                deleteTooltip: 'Διαγραφή πελάτη',
-                editTooltip: 'Επεξεργασία πελάτη',
-                editRow: {
-                  deleteText:
-                  'Διαγραφή πελάτη;',
-                  cancelTooltip: 'Ακύρωση',
-                  saveTooltip: 'Επιβεβαίωση'
-                }
-              },
-              header: {
-                actions: 'Ενέργειες'
-              },
-              grouping: {
-                placeholder: 'Σύρετε στήλη για ομαδοποίηση'
-              },
-              pagination: {
-                firstTooltip: 'Πρώτη σελίδα',
-                lastTooltip: 'Τελευταία σελίδα',
-                nextTooltip: 'Επόμενη σελίδα',
-                previousTooltip: 'Προηγούμενη σελίδα',
-                labelRowsSelect: 'γραμμές',
-                labelDisplayedRows: '{from}-{to} από {count}'
-              },
-              toolbar: {
-                searchTooltip: 'Αναζήτηση',
-                searchPlaceholder: 'Αναζήτηση'
-              }
-            }}
-          />
+          <Grid
+            container
+            alignItems='center'
+            justify='center'
+            spacing={5}
+            className={classes.grid}
+          >
+            {cases.map((currentCase, index) => {
+              const user = find(users, { id: currentCase.userID })
+              console.log(user)
+              return (
+                <Grid key={index} item>
+                  <Card className={classes.card} elevation={5}>
+                    <CardContent>
+                      <div style={{ display: 'flex' }}>
+                        <Typography
+                          className={classes.title}
+                          color='textSecondary'
+                          component='div'
+                        >
+                          {'Αρ.Φακέλου: '}
+                          <span>
+                            {currentCase.folderNo}
+                          </span>
+                        </Typography>
+                      </div>
+                      <Typography variant='h6'>
+                        {`Ανατέθηκε σε: ${user ? user.lastName + ' ' + user.firstName : ''}`}
+                      </Typography>
+                      <Typography className={classes.pos} color='textSecondary'>
+                        {`Φύση υπόθεσης: ${currentCase.nature}`}
+                      </Typography>
+                      <Typography variant='body2' component='p'>
+                        {`Ημερομηνία Ανάθεσης: ${currentCase.assignmentDate ? currentCase.assignmentDate : '-'}`}
+                        <br />
+                        {`Ημερομηνία Περάτωσης: ${currentCase.completionDate ? currentCase.completionDate : '-'}`}
+                      </Typography>
+                    </CardContent>
+                    <CardActions disableSpacing>
+                      <Button
+                        size='small'
+                        onClick={() => {
+                          history.push({
+                            pathname: `/case/${currentCase.folderNo}`,
+                            state: { case: currentCase }
+                          })
+                        }}
+                      >Περισσοτερα
+                      </Button>
+                    </CardActions>
+                  </Card>
+                </Grid>
+              )
+            })}
+          </Grid>
         </Container>
         <div className={classes.footer}>
           <Copyright />
@@ -514,4 +414,4 @@ export default connect(
       dispatch(deleteAccount())
     }
   })
-)(Clients)
+)(ClientCases)

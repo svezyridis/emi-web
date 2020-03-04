@@ -9,6 +9,8 @@ import Home from './components/Home'
 import Cases from './components/Cases'
 import Clients from './components/Clients'
 import Case from './components/Case'
+import UserManagement from './components/UserManagement'
+import ClientCases from './components/ClientCases'
 
 const themeObject = {
   palette: {
@@ -67,6 +69,8 @@ function App () {
           <Route exact path='/login' component={Login} />
           <Route exact path='/cases' component={Cases} />
           <Route exact path='/clients' component={Clients} />
+          <Route exact path='/users' component={UserManagement} />
+          <Route exact path='/client/:id' component={ClientCases} />
           <Route exact path='/case/:folderNumber' component={Case} />
         </Switch>
       </MuiThemeProvider>

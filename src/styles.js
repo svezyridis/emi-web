@@ -89,12 +89,29 @@ const useStyles = makeStyles(theme => ({
     marginTop: 'auto',
     backgroundColor:
       theme.palette.type === 'dark' ? theme.palette.grey[800] : theme.palette.grey[200],
-      position: 'fixed',
+    position: 'fixed',
     bottom: 0,
-    width:'100%',
+    width: '100%',
     textAlign: 'center',
-    marginLeft:'auto',
-    marginRight:'auto'
+    marginLeft: 'auto',
+    marginRight: 'auto'
+  },
+  card: {
+    minWidth: 300
+  },
+  attachments: {
+    marginTop: 30
+  },
+  inputfile: {
+    width: '0.1px',
+    height: '0.1px',
+    opacity: 0,
+    overflow: 'hidden',
+    position: 'absolute',
+    zIndex: -1
+  },
+  addFiles: {
+    display: 'inline-block'
   }
 }))
 

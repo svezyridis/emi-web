@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import clsx from 'clsx'
-import { makeStyles } from '@material-ui/core/styles'
 import CssBaseline from '@material-ui/core/CssBaseline'
 import Drawer from '@material-ui/core/Drawer'
-import Box from '@material-ui/core/Box'
 import AppBar from '@material-ui/core/AppBar'
 import Toolbar from '@material-ui/core/Toolbar'
 import List from '@material-ui/core/List'
@@ -12,7 +10,6 @@ import Divider from '@material-ui/core/Divider'
 import IconButton from '@material-ui/core/IconButton'
 import Badge from '@material-ui/core/Badge'
 import Container from '@material-ui/core/Container'
-import Grid from '@material-ui/core/Grid'
 import Link from '@material-ui/core/Link'
 import MenuIcon from '@material-ui/icons/Menu'
 import ChevronLeftIcon from '@material-ui/icons/ChevronLeft'
@@ -22,6 +19,7 @@ import ListItemIcon from '@material-ui/core/ListItemIcon'
 import ListItemText from '@material-ui/core/ListItemText'
 import DashboardIcon from '@material-ui/icons/Dashboard'
 import PeopleIcon from '@material-ui/icons/People'
+import SupervisedUserCircleIcon from '@material-ui/icons/SupervisedUserCircle'
 import { connect } from 'react-redux'
 import { newAccount, deleteAccount } from '../store/actions'
 import isEmpty from 'lodash.isempty'
@@ -203,6 +201,7 @@ function Home ({ deleteAccount, account }) {
     history.push('/login')
     return null
   }
+  const isManager = account.metadata.role === 'MANAGER'
 
   return (
     <div className={classes.root}>
@@ -219,13 +218,8 @@ function Home ({ deleteAccount, account }) {
             <MenuIcon />
           </IconButton>
           <Typography component='h1' variant='h6' color='inherit' noWrap className={classes.title}>
-            Οι υποθέσεις μου
+            {account.metadata.lastName + ' ' + account.metadata.firstName}
           </Typography>
-          <IconButton color='inherit'>
-            <Badge badgeContent={4} color='secondary'>
-              <NotificationsIcon />
-            </Badge>
-          </IconButton>
         </Toolbar>
       </AppBar>
       <Drawer
@@ -264,6 +258,12 @@ function Home ({ deleteAccount, account }) {
               </ListItemIcon>
               <ListItemText primary='Πελάτες' />
             </ListItem>
+            {isManager ? <ListItem button onClick={() => history.push('/users')}>
+              <ListItemIcon>
+                <SupervisedUserCircleIcon />
+              </ListItemIcon>
+              <ListItemText primary='Διαχείριση χρηστών' />
+            </ListItem> : null}
           </div>
         </List>
         <Divider />
@@ -278,9 +278,12 @@ function Home ({ deleteAccount, account }) {
               grouping: true
             }}
             onRowClick={(event, rowData) => {
-              console.log(rowData)
+              history.push({
+                pathname: `case/${rowData.folderNo}`,
+                state: { case: rowData }
+              })
             }}
-            title='Υποθέσεις'
+            title='Οι υποθέσεις μου'
             columns={columns}
             data={cases}
             localization={{

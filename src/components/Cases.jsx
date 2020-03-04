@@ -20,6 +20,7 @@ import ListItemText from '@material-ui/core/ListItemText'
 import DashboardIcon from '@material-ui/icons/Dashboard'
 import ShoppingCartIcon from '@material-ui/icons/ShoppingCart'
 import PeopleIcon from '@material-ui/icons/People'
+import SupervisedUserCircleIcon from '@material-ui/icons/SupervisedUserCircle'
 import { connect } from 'react-redux'
 import { newAccount, deleteAccount } from '../store/actions'
 import isEmpty from 'lodash.isempty'
@@ -374,13 +375,8 @@ function Cases ({ deleteAccount, account }) {
             <MenuIcon />
           </IconButton>
           <Typography component='h1' variant='h6' color='inherit' noWrap className={classes.title}>
-            Υποθέσεις
+            Αρχείο
           </Typography>
-          <IconButton color='inherit'>
-            <Badge badgeContent={4} color='secondary'>
-              <NotificationsIcon />
-            </Badge>
-          </IconButton>
         </Toolbar>
       </AppBar>
       <Drawer
@@ -419,6 +415,12 @@ function Cases ({ deleteAccount, account }) {
               </ListItemIcon>
               <ListItemText primary='Πελάτες' />
             </ListItem>
+            {isManager ? <ListItem button onClick={() => history.push('/users')}>
+              <ListItemIcon>
+                <SupervisedUserCircleIcon />
+              </ListItemIcon>
+              <ListItemText primary='Διαχείριση χρηστών' />
+                         </ListItem> : null}
           </div>
         </List>
         <Divider />
